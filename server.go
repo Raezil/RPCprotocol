@@ -36,16 +36,17 @@ func (rpc *RPCServer) Register(name string, f interface{}) {
 
 }
 
-func (rpc *RPCServer) Call(name string, args RPCArgs) any {
-	rpc.funcs[name].(func(RPCArgs) any)(args)
-	return nil
+func (rpc *RPCServer) Call(name string, args RPCArgs) *RPCResponse {
+	resp := rpc.funcs[name].(func(RPCArgs) RPCResponse)(args)
+	return &resp
 }
 
 func main() {
 	rpc := NewRPCServer()
-	rpc.Register("test", func(args RPCArgs) any {
-		fmt.Println(args)
-		return nil
+	rpc.Register("test", func(args RPCArgs) RPCResponse {
+		return RPCResponse{
+			Result: args,
+		}
 	})
-	rpc.Call("test", RPCArgs{"key": "value"})
+	fmt.Println(rpc.Call("test", RPCArgs{"key": "value"}))
 }
