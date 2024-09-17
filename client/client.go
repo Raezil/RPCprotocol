@@ -25,8 +25,9 @@ func main() {
 
 	// Prepare the request payload
 	reqBody, err := json.Marshal(map[string]interface{}{
-		"method": "test",
-		"params": RPCArgs{"key": "value"},
+		"method": "add",
+		"params": RPCArgs{"a": 1.22,
+			"b": 2.33},
 	})
 	if err != nil {
 		fmt.Println("Error encoding request:", err)

@@ -41,6 +41,12 @@ func (rpc *RPCServer) Register(name string, f interface{}) {
 
 }
 
+func (rpc *RPCServer) RegisterService(services map[string]interface{}) {
+	for name, f := range services {
+		rpc.Register(name, f)
+	}
+}
+
 func (rpc *RPCServer) Call(name string, args RPCArgs) *RPCResponse {
 	if fn, ok := rpc.funcs[name]; ok {
 		resp := fn.(func(RPCArgs) RPCResponse)(args)
@@ -75,10 +81,14 @@ func (rpc *RPCServer) ServeRPC(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	rpc := NewRPCServer()
-	rpc.Register("test", func(args RPCArgs) RPCResponse {
-		return RPCResponse{
-			Result: args,
-		}
+	rpc.RegisterService(map[string]interface{}{
+		"add": func(args RPCArgs) RPCResponse {
+			a := args["a"].(float64)
+			b := args["b"].(float64)
+			return RPCResponse{
+				Result: a + b,
+			}
+		},
 	})
 
 	http.HandleFunc("/rpc", rpc.ServeRPC)
