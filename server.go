@@ -1,23 +1,28 @@
 package main
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+)
 
 type RPCServer struct {
 	funcs map[string]interface{}
 }
 
 type RPCError struct {
-	Code    string
-	Message string
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
-func (r *RPCError) Error() {
-	fmt.Errorf("Error code: %s, %s", r.Code, r.Message)
+func (r *RPCError) Error() string {
+	return fmt.Sprintf("Error code: %s, %s", r.Code, r.Message)
 }
 
 type RPCResponse struct {
-	Result any
-	Error  RPCError
+	Result any       `json:"result"`
+	Error  *RPCError `json:"error,omitempty"`
 }
 
 func NewRPCServer() *RPCServer {
@@ -37,8 +42,35 @@ func (rpc *RPCServer) Register(name string, f interface{}) {
 }
 
 func (rpc *RPCServer) Call(name string, args RPCArgs) *RPCResponse {
-	resp := rpc.funcs[name].(func(RPCArgs) RPCResponse)(args)
-	return &resp
+	if fn, ok := rpc.funcs[name]; ok {
+		resp := fn.(func(RPCArgs) RPCResponse)(args)
+		return &resp
+	}
+	return &RPCResponse{
+		Error: &RPCError{
+			Code:    "404",
+			Message: "Method not found",
+		},
+	}
+}
+
+func (rpc *RPCServer) ServeRPC(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var req struct {
+		Method string  `json:"method"`
+		Params RPCArgs `json:"params"`
+	}
+	err := decoder.Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	// Call the RPC method
+	resp := rpc.Call(req.Method, req.Params)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func main() {
@@ -48,5 +80,9 @@ func main() {
 			Result: args,
 		}
 	})
-	fmt.Println(rpc.Call("test", RPCArgs{"key": "value"}))
+
+	http.HandleFunc("/rpc", rpc.ServeRPC)
+
+	fmt.Println("RPC server is running on port 8080...")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
