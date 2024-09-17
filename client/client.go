@@ -21,21 +21,13 @@ type RPCError struct {
 }
 
 type RPCClient struct {
-	url   string
-	funcs map[string]interface{}
+	url string
 }
 
 func NewRPCClient(url string) *RPCClient {
 	return &RPCClient{
 		url: url,
 	}
-}
-
-func (r *RPCClient) Register(name string, f interface{}) {
-	if r.funcs == nil {
-		r.funcs = make(map[string]interface{})
-	}
-	r.funcs[name] = f
 }
 
 func (r *RPCClient) Call(args map[string]interface{}) (*RPCResponse, error) {
